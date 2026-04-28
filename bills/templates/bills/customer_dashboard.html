@@ -1,0 +1,132 @@
+{% extends 'bills/base.html' %}
+{% block page_title %}My Dashboard{% endblock %}
+{% block content %}
+
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="stat-card blue">
+      <h6><i class="fas fa-tachometer-alt me-2"></i>Meter Number</h6>
+      <h3>{{ profile.meter_no }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card green">
+      <h6><i class="fas fa-file-invoice me-2"></i>Total Bills</h6>
+      <h3>{{ bills.count }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card gold">
+      <h6><i class="fas fa-money-bill me-2"></i>Total Due</h6>
+      <h3>Rs. {{ total_due|floatformat:0 }}</h3>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card red">
+      <h6><i class="fas fa-chart-line me-2"></i>Average Bill</h6>
+      <h3>Rs. {{ overall_avg|floatformat:0 }}</h3>
+    </div>
+  </div>
+</div>
+
+{% if year_averages %}
+<div class="card p-4 mb-4">
+  <h5 class="fw-bold mb-3"><i class="fas fa-chart-bar me-2"></i>Yearly Average Bills</h5>
+  <canvas id="avgChart" height="80"></canvas>
+  <div class="row mt-3">
+  {% for year, avg in year_averages.items %}
+  <div class="col-md-3 mb-2">
+    <div class="stat-card gold text-center p-3">
+      <small>{{ year }}</small><br>
+      <strong>Rs. {{ avg|floatformat:2 }}</strong><br>
+      <small>avg/month</small>
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+</div>
+
+<script>
+  new Chart(document.getElementById('avgChart'), {
+    type: 'bar',
+    data: {
+      labels: [{% for y, a in year_averages.items %}'{{ y }}',{% endfor %}],
+      datasets: [{
+        label: 'Average Amount (Rs.)',
+        data: [{% for y, a in year_averages.items %}{{ a|floatformat:2 }},{% endfor %}],
+        backgroundColor: 'rgba(102,126,234,0.8)',
+        borderRadius: 8
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: { y: { beginAtZero: true, title: { display: true, text: 'Rupees' } } }
+    }
+  });
+</script>
+{% endif %}
+
+<div class="card p-4">
+  <h5 class="fw-bold mb-3">📄 Bill History</h5>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Bill No.</th>
+          <th>Month/Year</th>
+          <th>Units</th>
+          <th>Amount (Rs.)</th>
+          <th>Due Date</th>
+          <th>Status</th>
+          <th>Bill Image</th>
+          <th>Print</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for bill in bills %}
+      <tr>
+        <td><small>{{ bill.bill_no|default:"-" }}</small></td>
+        <td>{{ bill.month }} {{ bill.year }}</td>
+        <td>{{ bill.units|floatformat:0 }} m³</td>
+        <td>Rs. {{ bill.amount|floatformat:2 }}</td>
+        <td>{{ bill.due_date|date:"d-m-Y" }}</td>
+        <td>
+          {% if bill.is_paid %}
+            <span class="badge-paid"><i class="fas fa-check-circle me-1"></i>Paid</span>
+          {% else %}
+            <span class="badge-unpaid"><i class="fas fa-times-circle me-1"></i>Unpaid</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if bill.bill_image %}
+            <a href="{{ bill.bill_image.url }}" target="_blank">
+              <img src="{{ bill.bill_image.url }}" width="40" height="40" style="object-fit:cover; border-radius:6px;">
+            </a>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'print_bill' bill.id %}" class="btn btn-sm btn-outline-primary" target="_blank">
+            <i class="fas fa-print"></i> Print
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center">No bills found. Jal hi gaye? 😄</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Optional: show profile completion -->
+{% if not profile.phone or not profile.address %}
+<div class="alert alert-warning mt-3">
+  <i class="fas fa-exclamation-triangle me-2"></i>
+  Your profile is incomplete. Please <a href="{% url 'update_profile' %}">update your phone and address</a> for better service.
+</div>
+{% endif %}
+
+{% endblock %}

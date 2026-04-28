@@ -1,0 +1,58 @@
+{% extends 'bills/base.html' %}
+{% block auth_content %}
+<div style="min-height:100vh;background:linear-gradient(135deg,#1a1a2e,#16213e);display:flex;align-items:center;justify-content:center;">
+<div class="card p-5" style="width:450px;">
+  <div class="text-center mb-4">
+    <i class="fas fa-fire-flame-curved fa-3x" style="color:#f5a623;"></i>
+    <h3 class="mt-2 fw-bold text-dark">Gas Bill System</h3>
+
+    <!-- Role Tabs -->
+    <div class="d-flex mt-3 mb-1" style="background:#f0f2f5;border-radius:10px;padding:4px;">
+      <button onclick="setRole('customer')" id="tab-customer" class="btn btn-sm w-50 active-tab">👤 Customer</button>
+      <button onclick="setRole('admin')" id="tab-admin" class="btn btn-sm w-50">🛡️ Admin</button>
+    </div>
+  </div>
+
+  {% if error %}<div class="alert alert-danger">{{ error }}</div>{% endif %}
+
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="role" id="role-input" value="customer">
+    <div class="mb-3">
+      <label class="form-label fw-bold">Email Address</label>
+      <input type="email" name="email" class="form-control form-control-lg" placeholder="email@gmail.com" required>
+    </div>
+    <div class="mb-2">
+      <label class="form-label fw-bold">Password</label>
+      <input type="password" name="password" class="form-control form-control-lg" placeholder="Password" required>
+    </div>
+    <div class="text-end mb-3">
+      <a href="/forgot-password/" style="color:#667eea;">Forgot Password?</a>
+    </div>
+    <button type="submit" class="btn btn-primary w-100 btn-lg">Login <i class="fas fa-arrow-right ms-2"></i></button>
+  </form>
+
+  <hr>
+  <p class="text-center mb-0" id="register-link">Naya account? <a href="/register/">Register karo</a></p>
+  <p class="text-center mt-2"><a href="/">← Home</a></p>
+</div>
+</div>
+
+<style>
+.active-tab{background:white!important;box-shadow:0 2px 8px rgba(0,0,0,0.1);border-radius:8px!important;font-weight:bold;}
+</style>
+
+<script>
+function setRole(role){
+  document.getElementById('role-input').value = role;
+  document.getElementById('tab-customer').classList.remove('active-tab');
+  document.getElementById('tab-admin').classList.remove('active-tab');
+  document.getElementById('tab-'+role).classList.add('active-tab');
+  if(role === 'admin'){
+    document.getElementById('register-link').style.display = 'none';
+  } else {
+    document.getElementById('register-link').style.display = 'block';
+  }
+}
+</script>
+{% endblock %}

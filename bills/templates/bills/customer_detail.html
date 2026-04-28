@@ -1,0 +1,84 @@
+{% extends 'bills/base.html' %}
+{% block page_title %}{{ customer.user.get_full_name }} - Bills{% endblock %}
+{% block content %}
+
+<div class="card p-4 mb-4">
+  <h5 class="fw-bold">Customer Info</h5>
+  <p>
+    <strong>Name:</strong> {{ customer.user.get_full_name }} | 
+    <strong>Meter:</strong> {{ customer.meter_no }} | 
+    <strong>Phone:</strong> {{ customer.phone|default:"—" }}<br>
+    <strong>Address:</strong> {{ customer.address|default:"—" }}
+  </p>
+</div>
+
+{% if year_averages %}
+<div class="row mb-4">
+{% for year, avg in year_averages.items %}
+<div class="col-md-3">
+  <div class="stat-card gold text-center p-3 mb-2">
+    <small>{{ year }} Average</small><br>
+    <h4>Rs. {{ avg|floatformat:2 }}</h4>
+  </div>
+</div>
+{% endfor %}
+</div>
+{% endif %}
+
+<div class="card p-4">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Bill No.</th>
+          <th>Month/Year</th>
+          <th>Previous</th>
+          <th>Current</th>
+          <th>Units</th>
+          <th>Amount (Rs.)</th>
+          <th>Due Date</th>
+          <th>Bill Image</th>
+          <th>Status</th>
+          <th>Print</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for bill in bills %}
+      <tr>
+        <td><small>{{ bill.bill_no|default:"-" }}</small></td>
+        <td>{{ bill.month }} {{ bill.year }}</td>
+        <td>{{ bill.previous_reading|floatformat:0 }}</td>
+        <td>{{ bill.current_reading|floatformat:0 }}</td>
+        <td>{{ bill.units|floatformat:0 }}</td>
+        <td>Rs. {{ bill.amount|floatformat:2 }}</td>
+        <td>{{ bill.due_date|date:"d-m-Y" }}</td>
+        <td>
+          {% if bill.bill_image %}
+            <a href="{{ bill.bill_image.url }}" target="_blank">
+              <img src="{{ bill.bill_image.url }}" width="40" height="40" style="object-fit:cover; border-radius:6px;">
+            </a>
+          {% else %}
+            <span class="text-muted">—</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if bill.is_paid %}
+            <span class="badge-paid">Paid</span>
+          {% else %}
+            <span class="badge-unpaid">Unpaid</span>
+          {% endif %}
+        </td>
+        <td>
+         <a href="{% url 'print_bill' bill.id %}" class="btn btn-sm btn-outline-primary" target="_blank"></a>
+            <i class="fas fa-print"></i>
+          </a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="10" class="text-center">No bills found.{% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}

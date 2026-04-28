@@ -1,0 +1,117 @@
+{% extends 'bills/base.html' %}
+{% block page_title %}Admin Dashboard{% endblock %}
+{% block content %}
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+  <div class="col-md-3">
+    <div class="stat-card blue">
+      <h6><i class="fas fa-users me-2"></i>Total Customers</h6>
+      <h2>{{ total_customers }}</h2>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card red">
+      <h6><i class="fas fa-file-invoice me-2"></i>Total Bills</h6>
+      <h2>{{ total_bills }}</h2>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card gold">
+      <h6><i class="fas fa-money-bill me-2"></i>Total Amount</h6>
+      <h2>Rs. {{ total_amount|floatformat:0 }}</h2>
+    </div>
+  </div>
+  <div class="col-md-3">
+    <div class="stat-card green">
+      <h6><i class="fas fa-chart-line me-2"></i>Quick Actions</h6>
+      <a href="{% url 'admin_add_customer' %}" class="btn btn-sm btn-light mt-2">➕ Add Customer</a>
+      <a href="{% url 'add_bill' %}" class="btn btn-sm btn-light mt-2">📄 Add Bill</a>
+    </div>
+  </div>
+</div>
+
+<!-- Filter Form -->
+<div class="card p-3 mb-4">
+  <h6 class="fw-bold mb-3"><i class="fas fa-filter me-2"></i>Filter Bills</h6>
+  <form method="get" class="row g-3">
+    <div class="col-md-3">
+      <label class="form-label">Customer</label>
+      {{ filter_form.customer }}
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Month</label>
+      {{ filter_form.month }}
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Year</label>
+      {{ filter_form.year }}
+    </div>
+    <div class="col-md-2">
+      <label class="form-label">Status</label>
+      {{ filter_form.is_paid }}
+    </div>
+    <div class="col-md-3 align-self-end">
+      <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-1"></i>Apply Filter</button>
+    </div>
+  </form>
+</div>
+
+<!-- Bills Table -->
+<div class="card p-4">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="fw-bold mb-0">📋 Bills List</h5>
+    <a href="{% url 'add_bill' %}" class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>Add Bill</a>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-hover align-middle">
+      <thead>
+        <tr>
+          <th>Bill No.</th>
+          <th>Customer</th>
+          <th>Month/Year</th>
+          <th>Units</th>
+          <th>Amount</th>
+          <th>Bill Image</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for bill in bills %}
+      <tr>
+        <td>{{ bill.bill_no|default:"-" }}</td>
+        <td>{{ bill.customer.user.get_full_name }}<br><small class="text-muted">{{ bill.customer.meter_no }}</small></td>
+        <td>{{ bill.month }} {{ bill.year }}</td>
+        <td>{{ bill.units|floatformat:0 }}</td>
+        <td>Rs. {{ bill.amount|floatformat:2 }}</td>
+        <td>
+          {% if bill.bill_image %}
+            <a href="{{ bill.bill_image.url }}" target="_blank">
+              <img src="{{ bill.bill_image.url }}" width="40" height="40" style="object-fit:cover; border-radius:5px;">
+            </a>
+          {% else %}
+            <span class="text-muted">No img</span>
+          {% endif %}
+        </td>
+        <td>
+          {% if bill.is_paid %}
+            <span class="badge-paid">✅ Paid</span>
+          {% else %}
+            <span class="badge-unpaid">⚠ Unpaid</span>
+          {% endif %}
+        </td>
+        <td>
+          <a href="{% url 'print_bill' bill.id %}" class="btn btn-sm btn-outline-primary" target="_blank" title="Print"><i class="fas fa-print"></i></a>
+          <a href="{% url 'edit_bill' bill.id %}" class="btn btn-sm btn-outline-warning ms-1" title="Edit"><i class="fas fa-edit"></i></a>
+          <a href="{% url 'delete_bill' bill.id %}" class="btn btn-sm btn-outline-danger ms-1" title="Delete"><i class="fas fa-trash"></i></a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center">No bills found.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

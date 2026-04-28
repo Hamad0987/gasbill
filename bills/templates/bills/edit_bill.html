@@ -1,0 +1,78 @@
+{% extends 'bills/base.html' %}
+{% block page_title %}Edit Bill{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-md-8">
+<div class="card p-4">
+  <div class="d-flex align-items-center mb-4">
+    <i class="fas fa-edit me-2" style="color:var(--accent);font-size:1.4rem;"></i>
+    <h5 class="fw-bold mb-0">Edit Bill - {{ bill.bill_no }}</h5>
+  </div>
+  <div class="alert alert-info py-2 mb-4" style="border-radius:10px;font-size:0.9rem;">
+    <i class="fas fa-user me-2"></i>
+    <strong>Customer:</strong> {{ bill.customer.user.get_full_name }}
+    &nbsp;|&nbsp;
+    <strong>Meter:</strong> {{ bill.customer.meter_no }}
+  </div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3">
+      <label class="fw-bold">Customer</label>
+      {{ form.customer }}
+    </div>
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="fw-bold">Month</label>
+        {{ form.month }}
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="fw-bold">Year</label>
+        {{ form.year }}
+      </div>
+    </div>
+    <div class="row">
+      <div class="col-md-6 mb-3">
+        <label class="fw-bold">Previous Reading</label>
+        {{ form.previous_reading }}
+        <small class="text-muted">Last month ka reading</small>
+      </div>
+      <div class="col-md-6 mb-3">
+        <label class="fw-bold">Current Reading</label>
+        {{ form.current_reading }}
+        <small class="text-muted">Is month ka reading</small>
+      </div>
+    </div>
+    <div class="mb-3">
+      <label class="fw-bold">Amount (Rs.)</label>
+      {{ form.amount }}
+    </div>
+    <div class="mb-3">
+      <label class="fw-bold">Due Date</label>
+      {{ form.due_date }}
+    </div>
+    <div class="mb-3">
+      <label class="fw-bold">Bill Image (optional)</label>
+      {{ form.bill_image }}
+      {% if bill.bill_image %}
+      <div class="mt-2">
+        <small>Current image: <a href="{{ bill.bill_image.url }}" target="_blank">View</a></small>
+      </div>
+      {% endif %}
+    </div>
+    <div class="mb-4 p-3" style="background:#f8f9fa;border-radius:10px;">
+      {{ form.is_paid }}
+      <label class="form-check-label fw-bold ms-2">Mark as Paid?</label>
+    </div>
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-primary flex-grow-1">
+        <i class="fas fa-save me-2"></i>Save Changes
+      </button>
+      <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary flex-grow-1">
+        <i class="fas fa-times me-2"></i>Cancel
+      </a>
+    </div>
+  </form>
+</div>
+</div>
+</div>
+{% endblock %}

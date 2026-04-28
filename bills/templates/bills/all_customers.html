@@ -1,0 +1,66 @@
+{% extends 'bills/base.html' %}
+{% block page_title %}All Customers{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold">👥 All Customers</h3>
+    <a href="{% url 'admin_add_customer' %}" class="btn btn-primary">
+        <i class="fas fa-plus me-1"></i>Add New Customer
+    </a>
+</div>
+
+<!-- Optional Search Form -->
+<div class="card p-3 mb-4">
+    <form method="get" class="row g-3">
+        <div class="col-md-10">
+            <input type="text" name="q" class="form-control" placeholder="Search by name, email, or meter number..." value="{{ request.GET.q }}">
+        </div>
+        <div class="col-md-2">
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-1"></i>Search</button>
+        </div>
+    </form>
+</div>
+
+<div class="card p-4">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Meter No</th>
+                    <th>Phone</th>
+                    <th>Verified</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for c in customers %}
+            <tr>
+                <td>{{ c.user.get_full_name }}</td>
+                <td>{{ c.user.email }}</td>
+                <td>{{ c.meter_no }}</td>
+                <td>{{ c.phone|default:"—" }}</td>
+                <td>
+                    {% if c.is_verified %}
+                        <span class="badge-paid">✓ Verified</span>
+                    {% else %}
+                        <span class="badge-unpaid">✗ Not Verified</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'customer_detail' c.id %}" class="btn btn-sm btn-primary">
+                        <i class="fas fa-eye me-1"></i>View Bills
+                    </a>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center">No customers found.</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

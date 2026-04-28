@@ -1,0 +1,95 @@
+{% extends 'bills/base.html' %}
+{% block page_title %}All Bills{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold">📋 All Bills</h3>
+    <a href="{% url 'add_bill' %}" class="btn btn-primary"><i class="fas fa-plus me-1"></i>Add New Bill</a>
+</div>
+
+<!-- Filter Form -->
+<div class="card p-3 mb-4">
+    <h6 class="fw-bold mb-3"><i class="fas fa-filter me-2"></i>Filter Bills</h6>
+    <form method="get" class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Customer</label>
+            {{ filter_form.customer }}
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Month</label>
+            {{ filter_form.month }}
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Year</label>
+            {{ filter_form.year }}
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Status</label>
+            {{ filter_form.is_paid }}
+        </div>
+        <div class="col-md-3 align-self-end">
+            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-search me-1"></i>Apply Filter</button>
+        </div>
+    </form>
+</div>
+
+<!-- Bills Table -->
+<div class="card p-3">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Bill No.</th>
+                    <th>Customer</th>
+                    <th>Meter No</th>
+                    <th>Month/Year</th>
+                    <th>Units</th>
+                    <th>Amount</th>
+                    <th>Due Date</th>
+                    <th>Image</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for bill in bills %}
+                <tr>
+                    <td><small>{{ bill.bill_no|default:"-" }}</small></td>
+                    <td>{{ bill.customer.user.get_full_name }}</td>
+                    <td>{{ bill.customer.meter_no }}</td>
+                    <td>{{ bill.month }} {{ bill.year }}</td>
+                    <td>{{ bill.units|floatformat:0 }}</td>
+                    <td>Rs. {{ bill.amount|floatformat:2 }}</td>
+                    <td>{{ bill.due_date|date:"d-m-Y" }}</td>
+                    <td>
+                        {% if bill.bill_image %}
+                            <a href="{{ bill.bill_image.url }}" target="_blank">
+                                <img src="{{ bill.bill_image.url }}" width="40" height="40" style="object-fit:cover; border-radius:6px;">
+                            </a>
+                        {% else %}
+                            <span class="text-muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if bill.is_paid %}
+                            <span class="badge-paid">Paid</span>
+                        {% else %}
+                            <span class="badge-unpaid">Unpaid</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <a href="{% url 'print_bill_html' bill.id %}" class="btn btn-sm btn-outline-primary" target="_blank" title="Print"><i class="fas fa-print"></i></a>
+                        <a href="{% url 'edit_bill' bill.id %}" class="btn btn-sm btn-outline-warning ms-1" title="Edit"><i class="fas fa-edit"></i></a>
+                        <a href="{% url 'delete_bill' bill.id %}" class="btn btn-sm btn-outline-danger ms-1" title="Delete"><i class="fas fa-trash"></i></a>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr>
+                    <td colspan="10" class="text-center">No bills found. <a href="{% url 'add_bill' %}">Add one</a></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

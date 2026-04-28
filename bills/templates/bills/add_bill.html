@@ -1,0 +1,28 @@
+{% extends 'bills/base.html' %}
+{% block page_title %}Add New Bill{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-md-8">
+<div class="card p-4">
+  <h5 class="fw-bold mb-4">Add New Bill</h5>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3"><label class="fw-bold">Customer</label>{{ form.customer }}</div>
+    <div class="row">
+      <div class="col-md-6 mb-3"><label class="fw-bold">Month</label>{{ form.month }}</div>
+      <div class="col-md-6 mb-3"><label class="fw-bold">Year</label>{{ form.year }}</div>
+    </div>
+    <div class="row">
+      <div class="col-md-6 mb-3"><label class="fw-bold">Previous Reading</label>{{ form.previous_reading }}</div>
+      <div class="col-md-6 mb-3"><label class="fw-bold">Current Reading</label>{{ form.current_reading }}</div>
+    </div>
+    <div class="mb-3"><label class="fw-bold">Amount (Rs.)</label>{{ form.amount }}</div>
+    <div class="mb-3"><label class="fw-bold">Due Date</label>{{ form.due_date }}</div>
+    <div class="mb-3"><label class="fw-bold">Bill Image (optional)</label>{{ form.bill_image }}</div>
+    <div class="mb-3 form-check">{{ form.is_paid }}<label class="form-check-label fw-bold ms-2">Paid?</label></div>
+    <button type="submit" class="btn btn-primary w-100">Save Bill</button>
+  </form>
+</div>
+</div>
+</div>
+{% endblock %}

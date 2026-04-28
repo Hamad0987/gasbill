@@ -1,0 +1,27 @@
+{% extends 'bills/base.html' %}
+{% block page_title %}Update Profile{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+<div class="col-md-6">
+<div class="card p-4">
+  <div class="text-center mb-4">
+    {% if profile.profile_pic %}
+    <img src="{{ profile.profile_pic.url }}" class="rounded-circle mb-3" style="width:100px;height:100px;object-fit:cover;">
+    {% else %}
+    <div style="width:100px;height:100px;background:linear-gradient(135deg,#667eea,#764ba2);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 15px;font-size:2.5rem;color:white;">
+      <i class="fas fa-user"></i>
+    </div>
+    {% endif %}
+    <h5 class="fw-bold">{{ request.user.get_full_name }}</h5>
+  </div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="mb-3"><label class="fw-bold">Phone</label>{{ form.phone }}</div>
+    <div class="mb-3"><label class="fw-bold">Address</label>{{ form.address }}</div>
+    <div class="mb-3"><label class="fw-bold">Profile Picture</label>{{ form.profile_pic }}</div>
+    <button type="submit" class="btn btn-primary w-100">Update Profile</button>
+  </form>
+</div>
+</div>
+</div>
+{% endblock %}
