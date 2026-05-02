@@ -124,6 +124,23 @@ def logout_view(request):
     return redirect('home')
 
 
+def admin_login_view(request):
+    error = None
+    if request.method == 'POST':
+        email = request.POST.get('email')
+        password = request.POST.get('password')
+        user = authenticate(request, username=email, password=password)
+        if user:
+            if user.is_staff:
+                login(request, user)
+                return redirect('admin_dashboard')
+            else:
+                error = 'Aap admin nahi hain!'
+        else:
+            error = 'Email ya password galat hai!'
+    return render(request, 'bills/admin_login.html', {'error': error})
+
+
 def forgot_password_view(request):
     error = None
     if request.method == 'POST':
@@ -187,14 +204,39 @@ def reset_password_view(request):
 @user_passes_test(is_admin)
 def admin_dashboard(request):
     customers = CustomerProfile.objects.all()
-    bills = Bill.objects.all().order_by('-created_at')[:50]
+    bills = Bill.objects.all().order_by('-created_at')
+
+    # Filter logic
+    customer_filter = request.GET.get('customer')
+    month_filter = request.GET.get('month')
+    year_filter = request.GET.get('year')
+    paid_filter = request.GET.get('is_paid')
+
+    if customer_filter:
+        bills = bills.filter(customer__id=customer_filter)
+    if month_filter:
+        bills = bills.filter(month=month_filter)
+    if year_filter:
+        bills = bills.filter(year=year_filter)
+    if paid_filter == 'paid':
+        bills = bills.filter(is_paid=True)
+    elif paid_filter == 'unpaid':
+        bills = bills.filter(is_paid=False)
+
+    bills = bills[:50]
+
     total_amount = Bill.objects.aggregate(Sum('amount'))['amount__sum'] or 0
+
+    from .forms import BillFilterForm
+    filter_form = BillFilterForm(request.GET or None)
+
     return render(request, 'bills/admin_dashboard.html', {
         'customers': customers,
         'bills': bills,
         'total_amount': total_amount,
         'total_customers': customers.count(),
         'total_bills': Bill.objects.count(),
+        'filter_form': filter_form,
     })
 
 
@@ -338,122 +380,176 @@ def print_bill(request, bill_id):
     p = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
 
-    # Header
-    p.setFillColorRGB(0.0, 0.4, 0.2)
-    p.rect(0, height-110, width, 110, fill=1)
+    # ── HEADER BACKGROUND ──
+    p.setFillColorRGB(0.05, 0.27, 0.13)
+    p.rect(0, height-120, width, 120, fill=1)
+
+    # Flame icon area (circle)
+    p.setFillColorRGB(0.96, 0.65, 0.14)
+    p.circle(60, height-60, 28, fill=1)
+    p.setFillColorRGB(1, 1, 1)
+    p.setFont("Helvetica-Bold", 18)
+    p.drawString(49, height-66, "🔥")
+
+    # Company name
+    p.setFillColorRGB(1, 1, 1)
+    p.setFont("Helvetica-Bold", 22)
+    p.drawString(100, height-45, "GAS BILL MANAGEMENT SYSTEM")
+    p.setFont("Helvetica", 10)
+    p.setFillColorRGB(0.8, 0.95, 0.85)
+    p.drawString(100, height-63, "Sui Gas Distribution Network — Pakistan")
+    p.setFont("Helvetica", 9)
+    p.setFillColorRGB(0.7, 0.9, 0.78)
+    p.drawString(100, height-79, "Helpline: 1199   |   info@gasbill.pk   |   www.gasbill.pk")
+
+    # ── BILL INFO BOX (top right) ──
+    p.setFillColorRGB(0.96, 0.65, 0.14)
+    p.roundRect(width-185, height-108, 170, 82, 6, fill=1)
+    p.setFillColorRGB(0.05, 0.27, 0.13)
+    p.setFont("Helvetica-Bold", 9)
+    p.drawString(width-175, height-40, f"Bill No:   GBS-{bill.id:05d}")
+    p.drawString(width-175, height-56, f"Month:    {bill.month} {bill.year}")
+    p.drawString(width-175, height-72, f"Due Date: {bill.due_date.strftime('%d %b %Y') if bill.due_date else '---'}")
+    p.drawString(width-175, height-88, f"Issue Date: {bill.created_at.strftime('%d %b %Y')}")
+
+    # ── DIVIDER ──
+    p.setStrokeColorRGB(0.05, 0.27, 0.13)
+    p.setLineWidth(1.5)
+    p.line(30, height-130, width-30, height-130)
+
+    # ── CUSTOMER INFO SECTION ──
+    p.setFillColorRGB(0.05, 0.27, 0.13)
+    p.roundRect(30, height-175, width-60, 28, 5, fill=1)
+    p.setFillColorRGB(1, 1, 1)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(42, height-157, "CUSTOMER INFORMATION")
+
+    # Customer details — two columns
+    p.setFillColorRGB(0.97, 0.97, 0.97)
+    p.roundRect(30, height-240, width-60, 60, 4, fill=1)
+
+    details = [
+        (42,  height-192, "Name:",    bill.customer.user.get_full_name()),
+        (42,  height-210, "Address:", bill.customer.address[:55] if bill.customer.address else "—"),
+        (310, height-192, "Meter No:", bill.customer.meter_no),
+        (310, height-210, "Phone:",    bill.customer.phone or "—"),
+    ]
+    for x, y, label, value in details:
+        p.setFillColorRGB(0.3, 0.3, 0.3)
+        p.setFont("Helvetica-Bold", 8.5)
+        p.drawString(x, y, label)
+        p.setFillColorRGB(0, 0, 0)
+        p.setFont("Helvetica", 8.5)
+        p.drawString(x + 58, y, str(value))
+
+    # ── METER READING TABLE ──
+    p.setFillColorRGB(0.05, 0.27, 0.13)
+    p.roundRect(30, height-278, width-60, 28, 5, fill=1)
+    p.setFillColorRGB(1, 1, 1)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(42, height-260, "METER READING DETAILS")
+
+    # Table header
+    p.setFillColorRGB(0.88, 0.94, 0.90)
+    p.roundRect(30, height-305, width-60, 22, 3, fill=1)
+    p.setFillColorRGB(0.05, 0.27, 0.13)
+    p.setFont("Helvetica-Bold", 9)
+    col_x = [42, 140, 240, 330, 430]
+    headers = ["Month / Year", "Prev Reading", "Curr Reading", "Units (m³)", "Amount (Rs.)"]
+    for hdr, x in zip(headers, col_x):
+        p.drawString(x, height-293, hdr)
+
+    # Table row
+    p.setFillColorRGB(1, 1, 1)
+    p.roundRect(30, height-328, width-60, 22, 3, fill=1)
+    p.setFillColorRGB(0, 0, 0)
+    p.setFont("Helvetica", 9)
+    row_vals = [
+        f"{bill.month} {bill.year}",
+        f"{bill.previous_reading:.0f}",
+        f"{bill.current_reading:.0f}",
+        f"{bill.units:.0f}" if bill.units else "—",
+        f"{bill.amount:,.0f}",
+    ]
+    for val, x in zip(row_vals, col_x):
+        p.drawString(x, height-316, val)
+
+    # Bottom border line
+    p.setStrokeColorRGB(0.85, 0.85, 0.85)
+    p.setLineWidth(0.5)
+    p.line(30, height-330, width-30, height-330)
+
+    # ── AMOUNT + STATUS BOXES ──
+    # Status box
+    if bill.is_paid:
+        p.setFillColorRGB(0.07, 0.55, 0.25)
+    else:
+        p.setFillColorRGB(0.78, 0.1, 0.1)
+    p.roundRect(30, height-390, 140, 50, 8, fill=1)
+    p.setFillColorRGB(1, 1, 1)
+    p.setFont("Helvetica-Bold", 18)
+    status_text = "✔  PAID" if bill.is_paid else "✘  UNPAID"
+    p.drawString(48, height-362, "PAID" if bill.is_paid else "UNPAID")
+    p.setFont("Helvetica", 8)
+    p.drawString(48, height-377, "Payment Status")
+
+    # Total payable box
+    p.setFillColorRGB(0.05, 0.27, 0.13)
+    p.roundRect(width-210, height-390, 180, 50, 8, fill=1)
+    p.setFillColorRGB(0.96, 0.65, 0.14)
+    p.setFont("Helvetica-Bold", 10)
+    p.drawString(width-198, height-355, "TOTAL PAYABLE")
     p.setFillColorRGB(1, 1, 1)
     p.setFont("Helvetica-Bold", 20)
-    p.drawString(50, height-45, "GAS BILL MANAGEMENT SYSTEM")
-    p.setFont("Helvetica", 11)
-    p.drawString(50, height-65, "Sui Gas Distribution Network")
-    p.setFont("Helvetica", 9)
-    p.drawString(50, height-82, "Helpline: 1199  |  info@gasbill.pk")
+    p.drawString(width-198, height-378, f"Rs. {bill.amount:,.0f}")
 
-    # Bill info box
-    p.setFillColorRGB(0.95, 0.95, 0.95)
-    p.rect(width-180, height-105, 160, 60, fill=1)
-    p.setFillColorRGB(0, 0, 0)
-    p.setFont("Helvetica-Bold", 9)
-    p.drawString(width-170, height-55, f"Bill No: GBS-{bill.id:05d}")
-    p.drawString(width-170, height-70, f"Month: {bill.month} {bill.year}")
-    p.drawString(width-170, height-85, f"Due Date: 15 {bill.month} {bill.year}")
-
-    # Customer Info
-    p.setFillColorRGB(0.0, 0.4, 0.2)
-    p.rect(30, height-145, width-60, 22, fill=1)
-    p.setFillColorRGB(1, 1, 1)
-    p.setFont("Helvetica-Bold", 10)
-    p.drawString(40, height-133, "CUSTOMER INFORMATION")
-
-    p.setFillColorRGB(0, 0, 0)
-    info = [
-        (40, height-165, "Consumer Name:", bill.customer.user.get_full_name()),
-        (40, height-180, "Meter Number:", bill.customer.meter_no),
-        (40, height-195, "Address:", bill.customer.address[:60]),
-        (320, height-165, "Phone:", bill.customer.phone),
-    ]
-    for x, y, label, value in info:
-        p.setFont("Helvetica-Bold", 9)
-        p.drawString(x, y, label)
-        p.setFont("Helvetica", 9)
-        p.drawString(x + 80, y, value)
-
-    # Reading Table
-    p.setFillColorRGB(0.0, 0.4, 0.2)
-    p.rect(30, height-230, width-60, 22, fill=1)
-    p.setFillColorRGB(1, 1, 1)
-    p.setFont("Helvetica-Bold", 10)
-    p.drawString(40, height-218, "METER READING DETAILS")
-
-    p.setFillColorRGB(0.85, 0.85, 0.85)
-    p.rect(30, height-255, width-60, 20, fill=1)
-    p.setFillColorRGB(0, 0, 0)
-    p.setFont("Helvetica-Bold", 9)
-    headers = ["Month", "Year", "Reading (CFT)", "Amount"]
-    x_pos = [40, 150, 260, 400]
-    for h, x in zip(headers, x_pos):
-        p.drawString(x, height-245, h)
-
-    p.setFillColorRGB(0.97, 0.97, 0.97)
-    p.rect(30, height-275, width-60, 18, fill=1)
-    p.setFillColorRGB(0, 0, 0)
-    p.setFont("Helvetica", 9)
-    values = [bill.month, str(bill.year), str(bill.reading), f"Rs. {bill.amount}"]
-    for v, x in zip(values, x_pos):
-        p.drawString(x, height-265, v)
-
-    # Amount & Status
-    p.setFillColorRGB(0.0, 0.4, 0.2)
-    p.rect(width-200, height-330, 170, 45, fill=1)
-    p.setFillColorRGB(1, 1, 1)
-    p.setFont("Helvetica-Bold", 11)
-    p.drawString(width-190, height-305, "TOTAL PAYABLE")
-    p.setFont("Helvetica-Bold", 16)
-    p.drawString(width-190, height-325, f"Rs. {bill.amount}")
-
-    if bill.is_paid:
-        p.setFillColorRGB(0.1, 0.6, 0.1)
-    else:
-        p.setFillColorRGB(0.8, 0.1, 0.1)
-    p.rect(30, height-330, 120, 45, fill=1)
-    p.setFillColorRGB(1, 1, 1)
-    p.setFont("Helvetica-Bold", 14)
-    p.drawString(50, height-312, "PAID" if bill.is_paid else "UNPAID")
-
-    # Bill Image
+    # ── BILL IMAGE ──
     if bill.bill_image:
         try:
-            p.setFillColorRGB(0, 0, 0)
-            p.setFont("Helvetica-Bold", 10)
-            p.drawString(40, height-360, "Attached Bill Image:")
-            p.drawImage(bill.bill_image.path, 30, height-560,
-                       width=250, height=180, preserveAspectRatio=True)
+            p.setFillColorRGB(0.05, 0.27, 0.13)
+            p.roundRect(30, height-415, 160, 18, 3, fill=1)
+            p.setFillColorRGB(1, 1, 1)
+            p.setFont("Helvetica-Bold", 9)
+            p.drawString(42, height-403, "ATTACHED BILL IMAGE")
+            p.drawImage(bill.bill_image.path, 30, height-600,
+                       width=230, height=175, preserveAspectRatio=True)
         except:
             pass
 
-    # Instructions
-    p.setFillColorRGB(0, 0, 0)
-    p.setFont("Helvetica-Bold", 9)
-    p.drawString(40, height-380, "Payment Instructions:")
-    p.setFont("Helvetica", 8)
-    instructions = [
-        "• Bank mein bill ki due date se pehle payment karen",
-        "• EasyPaisa / JazzCash se bhi payment mumkin hai",
-        "• Late payment par surcharge lagay ga",
-        "• Queries ke liye helpline 1199 par call karen",
-    ]
-    y = height - 395
-    for inst in instructions:
-        p.drawString(40, y, inst)
-        y -= 13
-
-    # Footer
-    p.setFillColorRGB(0.0, 0.4, 0.2)
-    p.rect(0, 0, width, 40, fill=1)
+    # ── PAYMENT INSTRUCTIONS ──
+    instr_x = 290 if bill.bill_image else 42
+    p.setFillColorRGB(0.05, 0.27, 0.13)
+    p.roundRect(instr_x, height-415, width-instr_x-30, 18, 3, fill=1)
     p.setFillColorRGB(1, 1, 1)
+    p.setFont("Helvetica-Bold", 9)
+    p.drawString(instr_x+12, height-403, "PAYMENT INSTRUCTIONS")
+
+    p.setFillColorRGB(0.97, 0.97, 0.97)
+    p.roundRect(instr_x, height-600, width-instr_x-30, 178, 4, fill=1)
+    p.setFillColorRGB(0.1, 0.1, 0.1)
+    p.setFont("Helvetica", 8.5)
+    instructions = [
+        "•  Bank mein bill ki due date se pehle payment karen.",
+        "•  EasyPaisa / JazzCash se bhi payment mumkin hai.",
+        "•  Late payment par surcharge lagay ga.",
+        "•  Bill number zaror note karen payment ke waqt.",
+        "•  Queries ke liye helpline 1199 par call karen.",
+        "•  Online: www.gasbill.pk par bhi pay kar sakte hain.",
+    ]
+    y = height - 435
+    for inst in instructions:
+        p.drawString(instr_x + 12, y, inst)
+        y -= 16
+
+    # ── FOOTER ──
+    p.setFillColorRGB(0.05, 0.27, 0.13)
+    p.rect(0, 0, width, 45, fill=1)
+    p.setFillColorRGB(0.96, 0.65, 0.14)
+    p.setFont("Helvetica-Bold", 8)
+    p.drawString(40, 28, "Gas Bill Management System  |  Computer Generated Bill — No Signature Required")
+    p.setFillColorRGB(0.7, 0.9, 0.78)
     p.setFont("Helvetica", 8)
-    p.drawString(40, 25, "Gas Bill Management System | Computer Generated Bill")
-    p.drawString(40, 12, f"Print Date: {bill.created_at.strftime('%d-%m-%Y')}")
+    p.drawString(40, 14, f"Generated: {bill.created_at.strftime('%d-%m-%Y %H:%M')}   |   Bill No: GBS-{bill.id:05d}   |   Meter: {bill.customer.meter_no}")
 
     p.showPage()
     p.save()
