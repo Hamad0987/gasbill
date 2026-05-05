@@ -24,7 +24,9 @@ class RegisterForm(forms.Form):
 class BillForm(forms.ModelForm):
     class Meta:
         model = Bill
-        fields = ['customer', 'month', 'year', 'previous_reading', 'current_reading', 'amount', 'due_date', 'is_paid', 'bill_image']
+        fields = ['customer', 'month', 'year', 'previous_reading',
+                  'current_reading', 'due_date', 'is_paid', 'bill_image']
+        #          ↑ amount hata diya — ab auto calculate hoga
         widgets = {
             'customer': forms.Select(attrs={'class':'form-select'}),
             'month': forms.Select(attrs={'class':'form-select'}),

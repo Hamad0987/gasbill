@@ -43,17 +43,31 @@ class Bill(models.Model):
     bill_image = models.ImageField(upload_to='bill_images/', blank=True, null=True)
     barcode = models.CharField(max_length=50, blank=True, null=True)
 
-    def save(self, *args, **kwargs):
-        # Auto-calculate units
-        if self.previous_reading is not None and self.current_reading is not None:
-            self.units = self.current_reading - self.previous_reading
-        # Auto-generate bill number if not set
-        if not self.bill_no:
-            self.bill_no = f"GB-{self.year}-{self.customer.id}-{random.randint(1000,9999)}"
-        # Set due date 14 days from creation if not set
-        if not self.due_date:
-            self.due_date = timezone.now().date() + timedelta(days=14)
-        super().save(*args, **kwargs)
+   def save(self, *args, **kwargs):
+    # Auto-calculate units
+    if self.previous_reading is not None and self.current_reading is not None:
+        self.units = self.current_reading - self.previous_reading
+
+        # ── Auto-calculate amount from units ──
+        units = self.units
+        fixed_charges = 150  # Fixed monthly charge
+
+        if units <= 100:
+            amount = units * 10
+        elif units <= 300:
+            amount = (100 * 10) + ((units - 100) * 15)
+        else:
+            amount = (100 * 10) + (200 * 15) + ((units - 300) * 20)
+
+        self.amount = amount + fixed_charges
+
+    # Auto-generate bill number if not set
+    if not self.bill_no:
+        self.bill_no = f"GB-{self.year}-{self.customer.id}-{random.randint(1000,9999)}"
+    # Set due date 14 days from creation if not set
+    if not self.due_date:
+        self.due_date = timezone.now().date() + timedelta(days=14)
+    super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.customer} - {self.month} {self.year}"
